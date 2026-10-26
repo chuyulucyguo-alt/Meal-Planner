@@ -5,7 +5,12 @@ It's built as a single-file Streamlit app (`app.py`) that calls the `gpt-6-luna`
 
 ## Features
 
-- **Inputs:** ingredients you have, dietary restrictions or allergies, weekly budget (USD), and number of people.
+- **Inputs:**
+  - Ingredients you have, dietary restrictions or allergies, weekly budget (USD), and number of people.
+  - **Days to plan:** 7 days, or 5 weekdays for meal prep.
+  - **Meals per day:** any of breakfast, lunch, and dinner.
+  - The menu, shopping list, budget, per-meal costs, and charts all follow your choices.
+- **Nutrition balance:** shows how many planned meals include protein, vegetables, and whole grains. Python works this out by matching each dish's ingredients against food lists. The model isn't asked to guess.
 - **Tool-calling agent** with two tools:
   - `estimate_cost(items)`: prices the shopping list from a hardcoded price table. All the math is done in Python, not by the model.
   - `check_allergens(recipe, allergies)`: flags dishes that contain your allergens. The agent replaces any unsafe dish.
