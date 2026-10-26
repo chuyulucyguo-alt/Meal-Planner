@@ -66,7 +66,8 @@ It's built as a single-file Streamlit app (`app.py`) that calls the `gpt-6-luna`
    ```bash
    streamlit run app.py
    ```
-   Streamlit opens the app at <http://localhost:8501>.
+   Then open **<http://localhost:8501>** in your browser.
+   The app runs in headless mode (set in `.streamlit/config.toml`). It skips Streamlit's first-run email prompt, and it doesn't open a browser tab by itself.
 
 ## Usage
 
