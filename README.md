@@ -19,7 +19,13 @@ It's built as a single-file Streamlit app (`app.py`) that calls the `gpt-6-luna`
 - **Agent trace:** the "How the agent planned this" section lists every step in order: each model round, each tool call with its inputs and result, and whether unsafe dishes were replaced (for example "check_allergens: Pad Thai → contains peanut → replaced"). You can download the trace as Markdown.
 - **"Use what you have" score:** a progress bar shows what share of your listed ingredients the plan uses.
 - **Shopping list download:** a `.txt` checklist grouped by store section (Produce, Meat & Seafood, Dairy & Eggs, Pantry).
-- **Warm theme:** the colors are set in `.streamlit/config.toml`. There is also a "Try an example" button on the start screen.
+- **Charts (Altair):**
+  - A budget journey chart shows each `estimate_cost` result across rounds, against a dashed budget line.
+  - A donut chart breaks down the shopping list's cost by store section.
+- **Visual summary:**
+  - Stat cards show the total, the money left in your budget, the cost per meal, and the cost per person per day.
+  - Each dish has tags for protein, veggie, and "your ingredients".
+- **Warm theme:** a gradient header banner, with colors set in `.streamlit/config.toml`. There is also a "Try an example" button on the start screen.
 - **Usage tracking:** the sidebar shows the input tokens, cached input tokens, output tokens, and estimated cost for each run. Every run, including blocked ones, is appended to `logs.csv`.
 
 ## Setup

@@ -8,6 +8,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
@@ -612,7 +613,7 @@ st.markdown(
       h1 {color: #B5482A;}
       .meal-card {background: #FFFFFF; border: 1px solid #F1DCC3; border-left: 5px solid #D9643A;
                   border-radius: 14px; padding: 0.8rem 1rem; margin-bottom: 0.8rem;
-                  min-height: 190px; box-shadow: 0 1px 4px rgba(120, 70, 30, 0.08);}
+                  min-height: 250px; box-shadow: 0 1px 4px rgba(120, 70, 30, 0.08);}
       .meal-card h4 {margin: 0 0 0.3rem 0; color: #B5482A; font-size: 1.02rem;}
       .meal-row {display: flex; gap: 0.5rem; align-items: flex-start; margin-top: 0.45rem;}
       .meal-emoji {font-size: 1.15rem; line-height: 1.3rem;}
@@ -646,6 +647,37 @@ st.markdown(
       .run-cost {grid-column: 1 / -1; background: #FBEBD6; border-radius: 8px;
                  padding: 0.3rem 0.5rem;}
       .run-cost b {color: #B5482A;}
+      .banner {position: relative; overflow: hidden; border-radius: 22px; padding: 1.7rem 2rem;
+               margin-bottom: 1.2rem; color: #FFFFFF;
+               background: linear-gradient(120deg, #B9472A 0%, #D9643A 40%, #F2A477 75%, #F8C9A0 100%);
+               box-shadow: 0 6px 18px rgba(185, 71, 42, 0.25);}
+      .banner-title {font-size: 2.3rem; font-weight: 800; line-height: 1.1; letter-spacing: -0.01em;}
+      .banner-tag {font-size: 1.05rem; margin-top: 0.4rem; color: #FFF1E6; max-width: 58%;}
+      .banner-deco {position: absolute; right: 1.6rem; top: 50%; transform: translateY(-50%);
+                    font-size: 2.4rem; display: flex; gap: 0.5rem;}
+      .banner-deco span:nth-child(odd) {transform: rotate(-12deg) translateY(-6px);}
+      .banner-deco span:nth-child(even) {transform: rotate(10deg) translateY(8px);}
+      .banner-blob {position: absolute; border-radius: 50%; background: rgba(255, 255, 255, 0.12);}
+      .stats {display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8rem; margin: 0.4rem 0 1rem 0;}
+      .stat {border-radius: 16px; padding: 0.9rem 1.1rem; color: #3B2A20;
+             border: 1px solid rgba(59, 42, 32, 0.06);}
+      .stat .label {font-size: 0.72rem; text-transform: uppercase; letter-spacing: .06em;
+                    color: #6E5544; font-weight: 600;}
+      .stat .value {font-size: 1.75rem; font-weight: 800; line-height: 1.25; margin-top: 0.15rem;}
+      .stat .sub {font-size: 0.8rem; color: #6E5544;}
+      .stat.s1 {background: linear-gradient(135deg, #FCE3D6, #F9CDB7);}
+      .stat.s2 {background: linear-gradient(135deg, #DDF0E8, #C3E5D7);}
+      .stat.s3 {background: linear-gradient(135deg, #FDF0D2, #F9E0A8);}
+      .stat.s4 {background: linear-gradient(135deg, #EEE6F5, #DDD0EC);}
+      .stat.over {background: linear-gradient(135deg, #FBD9D3, #F5BFB5);}
+      @media (max-width: 900px) {.stats {grid-template-columns: repeat(2, 1fr);}
+                                 .banner-tag {max-width: 100%;} .banner-deco {display: none;}}
+      .tags {margin-top: 0.15rem;}
+      .tag {display: inline-block; font-size: 0.66rem; font-weight: 600; padding: 0.05rem 0.45rem;
+            border-radius: 999px; margin: 0.15rem 0.2rem 0 0; white-space: nowrap;}
+      .tag-protein {background: #F8DCCF; color: #8A3518;}
+      .tag-veg {background: #D5EDE4; color: #0B5F4D;}
+      .tag-yours {background: #FBE9C4; color: #7A5410;}
     </style>
     """,
     unsafe_allow_html=True,
@@ -656,9 +688,19 @@ for key, default in {"runs": [], "run_count": 0, "result": None, "ing": "", "res
     if key not in st.session_state:
         st.session_state[key] = default
 
-st.title("🥘 Weekly Meal Planner")
-st.caption("Tell me what's in your kitchen. An AI agent plans 7 days of meals and a shopping "
-           "list that fits your budget.")
+st.markdown(
+    """
+    <div class="banner">
+      <div class="banner-blob" style="width:220px;height:220px;right:-60px;top:-90px"></div>
+      <div class="banner-blob" style="width:140px;height:140px;right:180px;bottom:-80px"></div>
+      <div class="banner-title">🥘 Weekly Meal Planner</div>
+      <div class="banner-tag">Tell me what's in your kitchen. An AI agent plans 7 days of meals
+        and a shopping list that fits your budget.</div>
+      <div class="banner-deco"><span>🍅</span><span>🥕</span><span>🧄</span><span>🍋</span><span>🥦</span></div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 with st.form("inputs"):
     col1, col2 = st.columns(2)
@@ -782,6 +824,113 @@ def trace_icon(step: dict) -> str:
     return "🔁" if step.get("replaced") else "⚠️"
 
 
+# ----- Charts (Altair, warm palette) -----
+# Categorical colors for store sections, validated for color-blind separation.
+SECTION_COLORS = {"Produce": "#0E8A70", "Meat & Seafood": "#C24E2C",
+                  "Dairy & Eggs": "#E3A43A", "Pantry": "#71509E"}
+INK, MUTED, GRID, SURFACE = "#3B2A20", "#9A7B63", "#F1DCC3", "#FFF8EF"
+
+
+def style_chart(chart):
+    return (chart.configure(background="transparent", font="sans-serif")
+            .configure_view(strokeWidth=0)
+            .configure_axis(gridColor=GRID, domainColor=GRID, tickColor=GRID,
+                            labelColor=MUTED, titleColor=MUTED, labelFontSize=11, titleFontSize=11)
+            .configure_legend(labelColor=INK, labelFontSize=12, symbolType="circle"))
+
+
+def budget_journey_chart(trace: list, budget: float):
+    """Each estimate_cost result in order, against a dashed budget line."""
+    estimates = [s for s in trace if s.get("tool") == "estimate_cost" and "total_cost" in s["result"]]
+    if not estimates:
+        return None
+    df = pd.DataFrame([{
+        "step": f"Estimate {i} · round {s['round']}", "order": i,
+        "total": s["result"]["total_cost"], "items": len(s["result"]["line_items"]),
+        "vs_budget": (f"${s['result']['total_cost'] - budget:.2f} over"
+                      if s["result"]["total_cost"] > budget
+                      else f"${budget - s['result']['total_cost']:.2f} under"),
+    } for i, s in enumerate(estimates, 1)])
+    df["over"] = df["total"] > budget
+    hi = max(df["total"].max(), budget)
+    x = alt.X("step:N", sort=alt.SortField("order"), title=None, axis=alt.Axis(labelAngle=0))
+    y = alt.Y("total:Q", title="Shopping list total", scale=alt.Scale(domain=[0, hi * 1.15]),
+              axis=alt.Axis(format="$,.0f", tickCount=4))
+    tooltip = [alt.Tooltip("step:N", title="Step"), alt.Tooltip("total:Q", title="Total", format="$.2f"),
+               alt.Tooltip("items:Q", title="Items"), alt.Tooltip("vs_budget:N", title="Vs. budget")]
+    base = alt.Chart(df).encode(x=x, y=y)
+    line = base.mark_line(color="#D9643A", strokeWidth=2)
+    points = base.mark_circle(size=110, color="#D9643A", stroke=SURFACE, strokeWidth=2,
+                              opacity=1).encode(tooltip=tooltip)
+    # Labels sit on the far side of the budget line so they never collide with it.
+    text = alt.Text("total:Q", format="$.2f")
+    labels_over = base.transform_filter("datum.over").mark_text(
+        dy=-15, color=INK, fontWeight=600, fontSize=12).encode(text=text)
+    labels_under = base.transform_filter("!datum.over").mark_text(
+        dy=19, color=INK, fontWeight=600, fontSize=12).encode(text=text)
+    budget_df = pd.DataFrame({"budget": [budget], "label": [f"Budget ${budget:.2f}"]})
+    rule = alt.Chart(budget_df).mark_rule(color=MUTED, strokeDash=[6, 4], strokeWidth=1.5).encode(
+        y="budget:Q")
+    rule_label = alt.Chart(budget_df).mark_text(align="left", dx=4, dy=-7, color=MUTED,
+                                                fontSize=11).encode(
+        y="budget:Q", x=alt.value(0), text="label:N")
+    return style_chart(alt.layer(rule, rule_label, line, points, labels_over, labels_under).properties(height=230))
+
+
+def section_donut_chart(costing: dict):
+    """Donut of shopping-list cost by store section, with % labels and the total in the middle."""
+    totals = {}
+    for li in costing["line_items"]:
+        sec = store_section(li["item"])
+        totals[sec] = totals.get(sec, 0.0) + li["line_total"]
+    present = [sec for sec in SECTIONS if totals.get(sec)]
+    if not present:
+        return None
+    grand = sum(totals.values())
+    df = pd.DataFrame([{"section": sec, "cost": round(totals[sec], 2), "order": i,
+                        "share": totals[sec] / grand, "label": f"{totals[sec] / grand:.0%}"}
+                       for i, sec in enumerate(present)])
+    color = alt.Color("section:N", title=None,
+                      scale=alt.Scale(domain=present, range=[SECTION_COLORS[s] for s in present]),
+                      legend=alt.Legend(orient="bottom", columns=2))
+    base = alt.Chart(df).encode(theta=alt.Theta("cost:Q", stack=True), order=alt.Order("order:Q"))
+    arcs = base.mark_arc(innerRadius=62, outerRadius=104, cornerRadius=4, stroke=SURFACE,
+                         strokeWidth=2).encode(
+        color=color,
+        tooltip=[alt.Tooltip("section:N", title="Section"),
+                 alt.Tooltip("cost:Q", title="Cost", format="$.2f"),
+                 alt.Tooltip("share:Q", title="Share", format=".0%")])
+    labels = base.mark_text(radius=124, color=INK, fontSize=12, fontWeight=600).encode(text="label:N")
+    center = alt.Chart(pd.DataFrame({"t": [f"${grand:.2f}"], "s": ["total"]}))
+    center_total = center.mark_text(fontSize=20, fontWeight=800, color=INK, dy=-6).encode(text="t:N")
+    center_sub = center.mark_text(fontSize=11, color=MUTED, dy=14).encode(text="s:N")
+    return style_chart(alt.layer(arcs, labels, center_total, center_sub).properties(height=320))
+
+
+# ----- Meal tags -----
+PROTEIN_WORDS = ["chicken", "beef", "turkey", "pork", "bacon", "salmon", "shrimp", "fish", "tuna",
+                 "egg", "tofu", "tempeh", "bean", "lentil", "chickpea", "greek yogurt", "cheese",
+                 "peanut butter", "sausage", "ham", "edamame", "quinoa"]
+VEG_WORDS = ["spinach", "broccoli", "carrot", "pepper", "zucchini", "mushroom", "tomato", "onion",
+             "lettuce", "kale", "cabbage", "cucumber", "squash", "eggplant", "peas", "corn", "celery",
+             "green bean", "cauliflower", "asparagus", "vegetable", "veggie", "salad", "sweet potato"]
+
+
+def dish_tags(dish: dict, used_items: list) -> str:
+    text = _normalize(dish.get("name", "") + " " + " ".join(dish.get("ingredients", [])))
+    no_eggplant = text.replace("eggplant", "")
+    stemmed = f" {_stem_text(text)} "
+    tags = []
+    if any(w in no_eggplant for w in PROTEIN_WORDS):
+        tags.append("<span class='tag tag-protein'>💪 protein</span>")
+    veg_text = text.replace("black pepper", "")
+    if any(re.search(rf"\b{w}", veg_text) for w in VEG_WORDS):
+        tags.append("<span class='tag tag-veg'>🥦 veggie</span>")
+    if any(f" {_stem_text(i)} " in stemmed for i in used_items if _stem_text(i)):
+        tags.append("<span class='tag tag-yours'>♻️ your ingredients</span>")
+    return f"<div class='tags'>{''.join(tags)}</div>" if tags else ""
+
+
 # ----- Results -----
 res = st.session_state.result
 if res:
@@ -794,13 +943,28 @@ if res:
         plan, costing, trace = res["plan"], res["costing"], res["trace"]
         total, budget_v = costing["total_cost"], res["budget"]
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("🛒 Shopping list total", f"${total:.2f}")
-        m2.metric("💵 Weekly budget", f"${budget_v:.2f}")
-        m3.metric("💰 Remaining", f"${budget_v - total:.2f}",
-                  delta="within budget" if total <= budget_v else "over budget",
-                  delta_color="normal" if total <= budget_v else "inverse")
-        m4.metric("👥 People", res["people"])
+        n_days = len(plan.get("days", [])) or 7
+        n_meals, people_n = n_days * len(MEALS), res["people"]
+        left = budget_v - total
+        over = left < 0
+        st.markdown(
+            f"""<div class="stats">
+              <div class="stat s1"><div class="label">🛒 Shopping total</div>
+                <div class="value">${total:.2f}</div>
+                <div class="sub">of ${budget_v:.2f} budget</div></div>
+              <div class="stat {'over' if over else 's2'}">
+                <div class="label">{'⚠️ Over budget' if over else '💰 Left in budget'}</div>
+                <div class="value">${abs(left):.2f}</div>
+                <div class="sub">{'trim the list to fit' if over else '✓ within budget'}</div></div>
+              <div class="stat s3"><div class="label">🍽️ Cost per meal</div>
+                <div class="value">${total / n_meals:.2f}</div>
+                <div class="sub">{n_meals} meals for the household</div></div>
+              <div class="stat s4"><div class="label">👤 Per person / day</div>
+                <div class="value">${total / (n_days * people_n):.2f}</div>
+                <div class="sub">{people_n} {'person' if people_n == 1 else 'people'} × {n_days} days</div></div>
+            </div>""",
+            unsafe_allow_html=True,
+        )
 
         # "Use what you have" score
         used, unused = res["used"], res["unused"]
@@ -833,7 +997,8 @@ if res:
                     dish = day.get(meal) or {}
                     card += (f"<div class='meal-row'><div class='meal-emoji'>{MEAL_EMOJI[meal]}</div>"
                              f"<div><div class='meal-label'>{meal}</div>"
-                             f"<div class='meal-name'>{h(dish.get('name', '—'))}</div></div></div>")
+                             f"<div class='meal-name'>{h(dish.get('name', '—'))}</div>"
+                             f"{dish_tags(dish, res['used'])}</div></div>")
                 cards.append(card + "</div>")
             cards.append(
                 "<div class='meal-card summary-card'><h4>🧺 This week</h4>"
@@ -841,6 +1006,11 @@ if res:
                 f"<div class='meal-name'>{len(costing['line_items'])} items to buy</div>"
                 f"<div class='meal-label' style='margin-top:.6rem'>{len(days) * 3} meals for "
                 f"{res['people']} {'person' if res['people'] == 1 else 'people'}</div></div>")
+            st.markdown("<span class='tag tag-protein'>💪 protein</span>"
+                        "<span class='tag tag-veg'>🥦 veggie</span>"
+                        "<span class='tag tag-yours'>♻️ your ingredients</span>"
+                        "<span style='font-size:.75rem;color:#9A7B63'> &nbsp;tags show what's in "
+                        "each dish</span>", unsafe_allow_html=True)
             for row_start in (0, 4):
                 for col, card in zip(st.columns(4), cards[row_start:row_start + 4]):
                     col.markdown(card, unsafe_allow_html=True)
@@ -853,6 +1023,7 @@ if res:
 
         with tab_shop:
             df = pd.DataFrame(costing["line_items"])
+            col_table, col_chart = st.columns([3, 2], gap="large")
             if not df.empty:
                 df.insert(0, "section", df["item"].map(store_section))
                 df["section"] = pd.Categorical(df["section"], categories=SECTIONS, ordered=True)
@@ -861,7 +1032,12 @@ if res:
                 df = df.rename(columns={"section": "Section", "item": "Item", "quantity": "Qty",
                                         "unit": "Unit", "unit_price": "Unit price ($)",
                                         "line_total": "Total ($)", "matched_as": "Price table match"})
-                st.dataframe(df, hide_index=True, width="stretch")
+                col_table.dataframe(df, hide_index=True, width="stretch", height=420)
+            with col_chart:
+                st.markdown("**Where the money goes**")
+                donut = section_donut_chart(costing)
+                if donut is not None:
+                    st.altair_chart(donut, width="stretch")
             st.markdown(f"**Total: \\${total:.2f}** (calculated in Python from the price table)")
             if costing["unknown_items"]:
                 st.caption("Not in price table, estimated at "
@@ -886,6 +1062,11 @@ if res:
             st.caption(f"{len(tool_steps)} tool calls · {len(checks)} allergen checks · "
                        f"{len(flagged)} unsafe dishes found, {len(replaced)} replaced · "
                        f"{sum(s['tool'] == 'estimate_cost' for s in tool_steps)} cost estimates")
+            journey = budget_journey_chart(trace, budget_v)
+            if journey is not None:
+                st.markdown("**💸 Budget journey:** each cost estimate the agent made, "
+                            "against your budget")
+                st.altair_chart(journey, width="stretch")
             show_io = st.toggle("Show tool inputs and results", key="show_io")
             with st.container(height=480):
                 for i, step in enumerate(trace, 1):
