@@ -221,3 +221,6 @@ __marimo__/
 
 # Meal Planner run logs
 logs.csv
+
+# macOS
+.DS_Store
