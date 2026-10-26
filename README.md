@@ -16,6 +16,10 @@ It's built as a single-file Streamlit app (`app.py`) that calls the `gpt-6-luna`
   - Output tokens are capped for each model call, and total tokens are capped for each run.
   - Each session is limited to 10 runs.
   - The agent gets at most 5 rounds of tool calls.
+- **Agent trace:** the "How the agent planned this" section lists every step in order: each model round, each tool call with its inputs and result, and whether unsafe dishes were replaced (for example "check_allergens: Pad Thai → contains peanut → replaced"). You can download the trace as Markdown.
+- **"Use what you have" score:** a progress bar shows what share of your listed ingredients the plan uses.
+- **Shopping list download:** a `.txt` checklist grouped by store section (Produce, Meat & Seafood, Dairy & Eggs, Pantry).
+- **Warm theme:** the colors are set in `.streamlit/config.toml`. There is also a "Try an example" button on the start screen.
 - **Usage tracking:** the sidebar shows the input tokens, cached input tokens, output tokens, and estimated cost for each run. Every run, including blocked ones, is appended to `logs.csv`.
 
 ## Setup
